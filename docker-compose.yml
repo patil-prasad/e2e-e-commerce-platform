@@ -1,0 +1,73 @@
+version: '3'
+services:
+  gateway:
+    build: ApiGateway
+    ports:
+      - "3000:3000"
+    volumes:
+      - my_vol:/apiGateway
+    depends_on:
+      - user-service
+      - postgres
+  user-service:
+    build: UserService
+    ports:
+      - "3001:3001"
+    volumes:
+      - my_vol:/user-service
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/userdb
+    depends_on:
+      - postgres
+  postgres:
+    image: 'postgres'
+    restart: always
+    environment:
+      - POSTGRES_USER=root 
+      - POSTGRES_PASSWORD=root
+    ports:
+      - "5432:5432"
+    volumes:
+      - my_vol:/var/lib/postgresql/data
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=pgadmin4@pgadmin.org
+      - PGADMIN_DEFAULT_PASSWORD=pgadmin4
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - my_vol:/redis
+  kafka:
+   image: apache/kafka
+   ports:
+     - "9092:9092"
+   volumes:
+     - my_vol:/kafka
+  dynamodb-local:
+   command: "-jar DynamoDBLocal.jar -sharedDb -dbPath ./data"
+   image: "amazon/dynamodb-local:latest"
+   container_name: dynamodb-local
+   ports:
+     - "8000:8000"
+   volumes:
+    - "./docker/dynamodb:/home/dynamodblocal/data"
+   working_dir: /home/dynamodblocal
+  dynamo-app-node:
+   depends_on:
+     - dynamodb-local
+   image: aaronshaf/dynamodb-admin
+   container_name: dynamo-app-node
+   ports:
+     - "8001:8001"
+   environment:
+       - DYNAMO_ENDPOINT=http://dynamodb-local:8000
+       - AWS_REGION=ap-southeast-1
+volumes:
+  my_vol:
